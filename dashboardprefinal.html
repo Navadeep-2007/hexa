@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Nexus AI — Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: 'Inter', sans-serif; background: radial-gradient(1200px 600px at 15% -10%, #12203a 0%, #0B1220 55%); margin:0; }
+  .font-display { font-family: 'Space Grotesk', sans-serif; }
+  .font-mono { font-family: 'JetBrains Mono', monospace; }
+
+  .card {
+    background: #131C31;
+    border: 1px solid #1F2A44;
+    border-radius: 16px;
+    transition: border-color .25s ease, transform .25s ease, box-shadow .25s ease;
+  }
+  .card:hover { border-color: #22D3EE55; transform: translateY(-2px); box-shadow: 0 8px 24px -8px #000a; }
+
+  .priority-high { border-left: 3px solid #FB7185; }
+  .priority-medium { border-left: 3px solid #FBBF24; }
+  .priority-low { border-left: 3px solid #34D399; }
+
+  .pulse-line {
+    position: absolute; left: 24px; top: 0; bottom: 0; width: 2px;
+    background: linear-gradient(180deg, transparent, #22D3EE40 8%, #22D3EE40 92%, transparent);
+  }
+  .pulse-dot {
+    position: absolute; left: 24px; width: 10px; height: 10px; border-radius: 9999px;
+    background: #22D3EE; transform: translateX(-50%);
+  }
+  .pulse-dot::after {
+    content: ''; position: absolute; inset: -6px; border-radius: 9999px;
+    border: 1px solid #22D3EE55; animation: ring 2.4s ease-out infinite;
+  }
+  @keyframes ring { 0% { transform: scale(.4); opacity: 1; } 100% { transform: scale(2.2); opacity: 0; } }
+
+  .signal {
+    position: absolute; left: 24px; top: 0; width: 4px; height: 4px; border-radius: 9999px;
+    background: #67e8f9; transform: translateX(-50%);
+    box-shadow: 0 0 8px 2px #67e8f9aa;
+    animation: travel 3.5s linear infinite;
+  }
+  @keyframes travel { 0% { top: 0; opacity: 0; } 8% { opacity: 1;} 92% { opacity: 1; } 100% { top: 100%; opacity: 0; } }
+
+  .chip { transition: all .2s ease; cursor: pointer; }
+  .chip.active { background: #22D3EE1A; border-color: #22D3EE; color: #67e8f9; }
+
+  .ring-track { stroke: #1F2A44; }
+  .ring-fill { stroke: #22D3EE; transition: stroke-dashoffset .5s ease; }
+
+  .strike { text-decoration: line-through; color: #64748b; }
+
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: #131C31; border: 1px solid #22D3EE55; color: #e2e8f0;
+    padding: 10px 18px; border-radius: 10px; font-size: 13px; font-family:'JetBrains Mono',monospace;
+    opacity: 0; pointer-events: none; transition: all .35s cubic-bezier(.2,.9,.3,1.2);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .item-detail { max-height: 0; overflow: hidden; transition: max-height .35s ease, opacity .25s ease; opacity: 0; }
+  .item-detail.open { max-height: 100px; opacity: 1; }
+
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-thumb { background: #1F2A44; border-radius: 8px; }
+</style>
+</head>
+<body class="min-h-screen text-slate-200">
+
+  <header class="flex items-center justify-between px-8 py-5 border-b border-[#1F2A44] backdrop-blur sticky top-0 z-10" style="background:#0B1220CC;">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-cyan-400/10 border border-cyan-400/30 flex items-center justify-center">
+        <span class="font-mono text-cyan-400 text-sm">N</span>
+      </div>
+      <span class="font-display font-bold text-lg text-white tracking-tight">Nexus AI</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span id="syncLabel" class="font-mono text-xs text-slate-500">synced just now</span>
+      </div>
+      <div class="w-8 h-8 rounded-full bg-slate-700"></div>
+    </div>
+  </header>
+
+  <main class="px-8 py-8 max-w-7xl mx-auto">
+
+    <div class="mb-8 flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+      <div>
+        <h1 class="font-display text-2xl text-white font-bold">Good morning.</h1>
+        <p class="text-slate-500 text-sm mt-1 font-mono">inbox 92% triaged · 3 items need you</p>
+      </div>
+
+      <div class="flex items-center gap-4 card px-5 py-3">
+        <svg width="52" height="52" viewBox="0 0 52 52">
+          <circle class="ring-track" cx="26" cy="26" r="22" fill="none" stroke-width="5"></circle>
+          <circle id="ringFill" class="ring-fill" cx="26" cy="26" r="22" fill="none" stroke-width="5"
+            stroke-linecap="round" stroke-dasharray="138.2" stroke-dashoffset="103.6"
+            transform="rotate(-90 26 26)"></circle>
+        </svg>
+        <div>
+          <p id="ringLabel" class="font-mono text-sm text-white">1 / 4 done</p>
+          <p class="text-slate-500 text-xs">today's progress</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+      <section class="card p-5 relative">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="font-display font-bold text-white text-sm tracking-wide">ACTION ITEMS</h2>
+          <span id="actionCount" class="font-mono text-xs text-cyan-400">03</span>
+        </div>
+
+        <div class="flex gap-2 mb-4">
+          <span class="chip active font-mono text-[11px] border border-[#1F2A44] rounded-full px-2.5 py-1" data-filter="all">ALL</span>
+          <span class="chip font-mono text-[11px] border border-[#1F2A44] rounded-full px-2.5 py-1" data-filter="high">HIGH</span>
+          <span class="chip font-mono text-[11px] border border-[#1F2A44] rounded-full px-2.5 py-1" data-filter="medium">MED</span>
+          <span class="chip font-mono text-[11px] border border-[#1F2A44] rounded-full px-2.5 py-1" data-filter="low">LOW</span>
+        </div>
+
+        <div class="relative pl-9" id="actionList">
+          <div class="pulse-line"></div>
+          <div class="signal" style="animation-delay:0s;"></div>
+          <div class="signal" style="animation-delay:1.6s;"></div>
+
+          <div class="relative mb-4 action-row" data-p="high">
+            <span class="pulse-dot" style="top:6px;"></span>
+            <div class="card priority-high pl-3 py-2 pr-2 ml-2 cursor-pointer" onclick="toggleDetail(this)">
+              <p class="text-sm text-slate-100">Reply to Prof. Sharma re: project extension</p>
+              <p class="font-mono text-[11px] text-rose-400 mt-1">HIGH · from email</p>
+              <div class="item-detail">
+                <p class="text-xs text-slate-400 mt-2 pt-2 border-t border-[#1F2A44]">Detected deadline: tomorrow, 5 PM. Sender flagged as recurring contact.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="relative mb-4 action-row" data-p="medium">
+            <span class="pulse-dot" style="top:6px;"></span>
+            <div class="card priority-medium pl-3 py-2 pr-2 ml-2 cursor-pointer" onclick="toggleDetail(this)">
+              <p class="text-sm text-slate-100">Submit internship completion form</p>
+              <p class="font-mono text-[11px] text-amber-400 mt-1">MEDIUM · from email</p>
+              <div class="item-detail">
+                <p class="text-xs text-slate-400 mt-2 pt-2 border-t border-[#1F2A44]">Form link found in thread from July 28. No deadline detected — defaulting to this week.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="relative action-row" data-p="low">
+            <span class="pulse-dot" style="top:6px;"></span>
+            <div class="card priority-low pl-3 py-2 pr-2 ml-2 cursor-pointer" onclick="toggleDetail(this)">
+              <p class="text-sm text-slate-100">Review teammate's PR on OAuth flow</p>
+              <p class="font-mono text-[11px] text-emerald-400 mt-1">LOW · from calendar note</p>
+              <div class="item-detail">
+                <p class="text-xs text-slate-400 mt-2 pt-2 border-t border-[#1F2A44]">Linked to hackathon repo, branch "oauth-flow".</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="font-display font-bold text-white text-sm tracking-wide">DEADLINES</h2>
+          <span class="font-mono text-xs text-cyan-400">02</span>
+        </div>
+        <div class="space-y-1">
+          <div class="flex items-center justify-between py-3 border-b border-[#1F2A44] group">
+            <div>
+              <p class="text-sm text-slate-100 group-hover:text-cyan-300 transition">Hackathon prototype freeze</p>
+              <p class="font-mono text-[11px] text-slate-500">detected from calendar</p>
+            </div>
+            <span class="font-mono text-xs text-rose-400 bg-rose-400/10 px-2 py-1 rounded-md">3d</span>
+          </div>
+          <div class="flex items-center justify-between py-3 group">
+            <div>
+              <p class="text-sm text-slate-100 group-hover:text-cyan-300 transition">Internship report submission</p>
+              <p class="font-mono text-[11px] text-slate-500">detected from email</p>
+            </div>
+            <span class="font-mono text-xs text-amber-400 bg-amber-400/10 px-2 py-1 rounded-md">9d</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="card p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="font-display font-bold text-white text-sm tracking-wide">TO-DO LIST</h2>
+          <span class="font-mono text-xs text-cyan-400">4</span>
+        </div>
+        <ul class="space-y-3" id="todoList">
+          <li class="flex items-start gap-3">
+            <input type="checkbox" class="mt-1 accent-cyan-400 todo-check" onchange="onCheck(this)" />
+            <span class="text-sm text-slate-100">Wire OAuth callback to backend</span>
+          </li>
+          <li class="flex items-start gap-3">
+            <input type="checkbox" class="mt-1 accent-cyan-400 todo-check" checked onchange="onCheck(this)" />
+            <span class="text-sm strike">Set up Google Cloud project</span>
+          </li>
+          <li class="flex items-start gap-3">
+            <input type="checkbox" class="mt-1 accent-cyan-400 todo-check" onchange="onCheck(this)" />
+            <span class="text-sm text-slate-100">Draft LLM extraction prompt</span>
+          </li>
+          <li class="flex items-start gap-3">
+            <input type="checkbox" class="mt-1 accent-cyan-400 todo-check" onchange="onCheck(this)" />
+            <span class="text-sm text-slate-100">Rehearse demo script</span>
+          </li>
+        </ul>
+      </section>
+
+    </div>
+  </main>
+
+  <div id="toast" class="toast font-mono"></div>
+
+<script>
+  document.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      const f = chip.dataset.filter;
+      document.querySelectorAll('.action-row').forEach(row => {
+        row.style.display = (f === 'all' || row.dataset.p === f) ? '' : 'none';
+      });
+    });
+  });
+
+  function toggleDetail(el) {
+    const d = el.querySelector('.item-detail');
+    d.classList.toggle('open');
+  }
+
+  const CIRC = 138.2;
+  function updateRing() {
+    const total = document.querySelectorAll('.todo-check').length;
+    const done = document.querySelectorAll('.todo-check:checked').length;
+    const pct = done / total;
+    document.getElementById('ringFill').setAttribute('stroke-dashoffset', CIRC * (1 - pct));
+    document.getElementById('ringLabel').textContent = `${done} / ${total} done`;
+  }
+
+  function onCheck(box) {
+    const label = box.nextElementSibling;
+    label.classList.toggle('strike', box.checked);
+    updateRing();
+    if (box.checked) showToast('Marked done ✓');
+  }
+
+  let toastTimer;
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+  }
+
+  updateRing();
+
+  let seconds = 0;
+  setInterval(() => {
+    seconds += 1;
+    document.getElementById('syncLabel').textContent =
+      seconds < 60 ? `synced ${seconds}s ago` : `synced ${Math.floor(seconds/60)}m ago`;
+  }, 1000);
+</script>
+
+</body>
+</html>
